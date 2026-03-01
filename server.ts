@@ -23,7 +23,7 @@ async function startServer() {
 
       const  auth = Buffer.from(`${email.trim()}:${token.trim()}`).toString('base64');
 
-      //const proxyUrl = "https://corsproxy.io/?";
+      const proxyUrl = "https://corsproxy.io/?";
       const params = new URLSearchParams({
         jql: jql || '',
         maxResults: "100",
@@ -31,12 +31,12 @@ async function startServer() {
       });
 
       const jiraApiUrl = `https://${domain}/rest/api/3/search/jql?${params.toString()}`;
+    
+      const finalUrl = jiraApiUrl; // proxyUrl + encodeURIComponent(jiraApiUrl);
 
-      //const finalUrl = proxyUrl + encodeURIComponent(jiraApiUrl);
+      console.log(`[Backend] Fetching from Jira API: ${finalUrl}`);
 
-      console.log(`[Backend] Fetching from Jira API: ${jiraApiUrl}`);
-
-      const response = await fetch(jiraApiUrl, {
+      const response = await fetch(finalUrl, {
         method: 'GET',
         headers: {
           'Authorization': `Basic ${auth}`,
