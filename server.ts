@@ -22,7 +22,6 @@ async function startServer() {
       console.log(`[Backend] JQL: ${jql}`);
 
       const  auth = Buffer.from(`${email.trim()}:${token.trim()}`).toString('base64');
-      //const auth = btoa(`${email.trim()}:${token.trim()}`);
 
       //const proxyUrl = "https://corsproxy.io/?";
       const params = new URLSearchParams({
