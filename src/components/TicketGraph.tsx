@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Network } from "vis-network";
+import { DataSet } from "vis-data";
 import { JiraTicket } from "../types";
 import { useAppContext } from "../utils/AppContext";
 import { getTypeStyle } from "../utils/theme";
@@ -22,6 +23,8 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<Network | null>(null);
+  const nodesRef = useRef<DataSet<any> | null>(null);
+  const edgesRef = useRef<DataSet<any> | null>(null);
   const fishCanvasRef = useRef<HTMLCanvasElement>(null);
   const fishAnimationRef = useRef<number | null>(null);
 
@@ -330,6 +333,15 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
   };
 
   useEffect(() => {
+    return () => {
+      if (networkRef.current) {
+        networkRef.current.destroy();
+        networkRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (!containerRef.current) return;
 
     const allNodesMap = new Map();
@@ -436,6 +448,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
         }
 
         allEdges.push({
+          id: `${isOutward ? ticket.key : linkedTicket.key}-${isOutward ? linkedTicket.key : ticket.key}-${linkType}`,
           from: isOutward ? ticket.key : linkedTicket.key,
           to: isOutward ? linkedTicket.key : ticket.key,
           label: linkType,
@@ -502,74 +515,89 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
       );
     }
 
-    const data = { nodes: renderNodesArray, edges: renderEdgesArray };
+    if (!networkRef.current) {
+      nodesRef.current = new DataSet(renderNodesArray);
+      edgesRef.current = new DataSet(renderEdgesArray);
 
-    const options = {
-      physics: {
-        enabled: isPhysicsEnabled,
-        solver: "barnesHut",
-        barnesHut: {
-          gravitationalConstant: -2500,
-          centralGravity: 0.1,
-          springLength: 100,
-          springConstant: 0.04,
-          damping: 0.09,
-          avoidOverlap: 0.1,
+      const data = { nodes: nodesRef.current, edges: edgesRef.current };
+
+      const options = {
+        physics: {
+          enabled: isPhysicsEnabled,
+          solver: "barnesHut",
+          barnesHut: {
+            gravitationalConstant: -2500,
+            centralGravity: 0.1,
+            springLength: 100,
+            springConstant: 0.04,
+            damping: 0.09,
+            avoidOverlap: 0.1,
+          },
+          stabilization: { enabled: true, iterations: 150, updateInterval: 25 },
         },
-        stabilization: { enabled: true, iterations: 150, updateInterval: 25 },
-      },
-      interaction: { hover: true, tooltipDelay: 200 },
-    };
+        interaction: { hover: true, tooltipDelay: 200 },
+      };
 
-    setIsLoading(true);
-    networkRef.current = new Network(containerRef.current, data, options);
+      setIsLoading(true);
+      networkRef.current = new Network(containerRef.current, data, options);
 
-    networkRef.current.on("stabilizationIterationsDone", () => {
-      setIsLoading(false);
-      if (!isPhysicsEnabled) {
-        networkRef.current?.setOptions({ physics: { enabled: false } });
-      }
-    });
-
-    networkRef.current.on("selectNode", (params) => {
-      if (params.nodes.length > 0) {
-        setSidebarNodeId(params.nodes[0]);
-      }
-    });
-
-    networkRef.current.on("deselectNode", (params) => {
-      if (params.nodes.length === 0) {
-        setSidebarNodeId(null);
-      }
-    });
-
-    networkRef.current.on("oncontext", (params) => {
-      params.event.preventDefault();
-      const nodeId = networkRef.current?.getNodeAt(params.pointer.DOM);
-
-      if (nodeId) {
-        const wrapperRect = document
-          .getElementById("graph-wrapper")
-          ?.getBoundingClientRect();
-        if (wrapperRect) {
-          const menuX = params.event.clientX - wrapperRect.left;
-          const menuY = params.event.clientY - wrapperRect.top;
-          setContextMenu({ x: menuX, y: menuY, nodeId: nodeId as string });
+      networkRef.current.on("stabilizationIterationsDone", () => {
+        setIsLoading(false);
+        if (!isPhysicsEnabled) {
+          networkRef.current?.setOptions({ physics: { enabled: false } });
         }
-      } else {
-        setContextMenu(null);
-      }
-    });
+      });
 
-    networkRef.current.on("click", () => setContextMenu(null));
-    networkRef.current.on("dragStart", () => setContextMenu(null));
+      networkRef.current.on("selectNode", (params) => {
+        if (params.nodes.length > 0) {
+          setSidebarNodeId(params.nodes[0]);
+        }
+      });
 
-    return () => {
-      if (networkRef.current) {
-        networkRef.current.destroy();
-        networkRef.current = null;
+      networkRef.current.on("deselectNode", (params) => {
+        if (params.nodes.length === 0) {
+          setSidebarNodeId(null);
+        }
+      });
+
+      networkRef.current.on("oncontext", (params) => {
+        params.event.preventDefault();
+        const nodeId = networkRef.current?.getNodeAt(params.pointer.DOM);
+
+        if (nodeId) {
+          const wrapperRect = document
+            .getElementById("graph-wrapper")
+            ?.getBoundingClientRect();
+          if (wrapperRect) {
+            const menuX = params.event.clientX - wrapperRect.left;
+            const menuY = params.event.clientY - wrapperRect.top;
+            setContextMenu({ x: menuX, y: menuY, nodeId: nodeId as string });
+          }
+        } else {
+          setContextMenu(null);
+        }
+      });
+
+      networkRef.current.on("click", () => setContextMenu(null));
+      networkRef.current.on("dragStart", () => setContextMenu(null));
+    } else {
+      // Update existing network silently
+      if (nodesRef.current && edgesRef.current) {
+        const currentNodes = nodesRef.current.getIds();
+        const newNodes = renderNodesArray.map((n) => n.id);
+        const nodesToRemove = currentNodes.filter((id) => !newNodes.includes(id));
+
+        nodesRef.current.remove(nodesToRemove);
+        nodesRef.current.update(renderNodesArray);
+
+        const currentEdges = edgesRef.current.getIds();
+        const newEdges = renderEdgesArray.map((e) => e.id);
+        const edgesToRemove = currentEdges.filter((id) => !newEdges.includes(id));
+
+        edgesRef.current.remove(edgesToRemove);
+        edgesRef.current.update(renderEdgesArray);
       }
-    };
+    }
   }, [tickets, isDark, focusNodeId, focusDepth]);
 
   useEffect(() => {
