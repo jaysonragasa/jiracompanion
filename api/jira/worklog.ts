@@ -4,29 +4,46 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { domain, email, token, jql } = req.body;
+    const { domain, email, token, ticketKey, timeSpent, comment } = req.body;
     
-    if (!domain || !email || !token) {
-      return res.status(400).json({ error: "Missing credentials" });
+    if (!domain || !email || !token || !ticketKey || !timeSpent) {
+      return res.status(400).json({ error: "Missing required fields" });
     }
 
     const auth = Buffer.from(`${email.trim()}:${token.trim()}`).toString('base64');
+    const jiraApiUrl = `https://${domain}/rest/api/3/issue/${ticketKey}/worklog`;
 
-    const params = new URLSearchParams({
-      jql: jql || '',
-      maxResults: "100",
-      fields: "*all"
-    });
+    const body: any = {
+      timeSpent: timeSpent
+    };
 
-    const jiraApiUrl = `https://${domain}/rest/api/3/search/jql?${params.toString()}`;
+    if (comment) {
+      body.comment = {
+        type: "doc",
+        version: 1,
+        content: [
+          {
+            type: "paragraph",
+            content: [
+              {
+                type: "text",
+                text: comment
+              }
+            ]
+          }
+        ]
+      };
+    }
 
     const response = await fetch(jiraApiUrl, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Authorization': `Basic ${auth}`,
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
         'X-Atlassian-Token': 'no-check'
-      }
+      },
+      body: JSON.stringify(body)
     });
 
     const responseText = await response.text();

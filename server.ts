@@ -21,7 +21,7 @@ async function startServer() {
       console.log(`[Backend] Target Domain: ${domain}`);
       console.log(`[Backend] JQL: ${jql}`);
 
-      const auth = btoa(`${email.trim()}:${token.trim()}`);
+      const auth = Buffer.from(`${email.trim()}:${token.trim()}`).toString('base64');
 
       const proxyUrl = "https://corsproxy.io/?";
       const params = new URLSearchParams({
@@ -77,7 +77,7 @@ async function startServer() {
 
       console.log(`[Backend] Target Domain: ${domain}, Ticket: ${ticketKey}, Time: ${timeSpent}`);
 
-      const auth = btoa(`${email.trim()}:${token.trim()}`);
+      const auth = Buffer.from(`${email.trim()}:${token.trim()}`).toString('base64');
       const jiraApiUrl = `https://${domain}/rest/api/3/issue/${ticketKey}/worklog`;
 
       const body: any = {
