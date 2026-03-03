@@ -11,6 +11,8 @@ import { fetchJiraTickets, generateJqlFromAssignees } from "./jira";
 interface AppState {
   settings: Settings;
   setSettings: (settings: Settings) => void;
+  previewSettings: Settings | null;
+  setPreviewSettings: (settings: Settings | null) => void;
   tickets: JiraTicket[];
   loading: boolean;
   error: string | null;
@@ -58,6 +60,8 @@ const defaultSettings: Settings = {
   assignees: "",
   jql: "order by updated DESC",
   bgImage: "",
+  bgOpacity: 0.8,
+  bgBlur: false,
   theme: "dark",
   fontSize: 14,
   autoRefresh: 30000,
@@ -78,6 +82,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
     return defaultSettings;
   });
+
+  const [previewSettings, setPreviewSettings] = useState<Settings | null>(null);
 
   const [tickets, setTickets] = useState<JiraTicket[]>([]);
   const [loading, setLoading] = useState(false);
@@ -180,23 +186,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [settings.autoRefresh, settings.domain, settings.email, settings.token]);
 
   useEffect(() => {
+    const activeSettings = previewSettings || settings;
     const root = window.document.documentElement;
-    if (settings.theme === "dark") {
+    if (activeSettings.theme === "dark") {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
-  }, [settings.theme]);
+  }, [settings.theme, previewSettings?.theme]);
 
   useEffect(() => {
-    document.documentElement.style.fontSize = `${settings.fontSize}px`;
-  }, [settings.fontSize]);
+    const activeSettings = previewSettings || settings;
+    document.documentElement.style.fontSize = `${activeSettings.fontSize}px`;
+  }, [settings.fontSize, previewSettings?.fontSize]);
 
   return (
     <AppContext.Provider
       value={{
         settings,
         setSettings,
+        previewSettings,
+        setPreviewSettings,
         tickets,
         loading,
         error,

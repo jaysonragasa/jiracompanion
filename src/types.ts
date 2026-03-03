@@ -29,6 +29,8 @@ export interface Settings {
   assignees: string;
   jql: string;
   bgImage: string;
+  bgOpacity: number;
+  bgBlur: boolean;
   theme: "light" | "dark";
   fontSize: number;
   autoRefresh: number;

@@ -8,28 +8,30 @@ import QuickFindWidget from "./components/QuickFindWidget";
 import { Lock, Ticket } from "lucide-react";
 
 function Dashboard() {
-  const { settings, loading, error, debugInfo } = useAppContext();
+  const { settings, previewSettings, loading, error, debugInfo } = useAppContext();
+  const activeSettings = previewSettings || settings;
 
   return (
     <div className="text-slate-900 dark:text-slate-100 min-h-screen pb-20 transition-colors duration-200 relative">
       <div
-        className={`fixed inset-0 z-[-2] bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${settings.bgImage ? "opacity-100" : "opacity-0"}`}
+        className={`fixed inset-0 z-[-2] bg-cover bg-center bg-no-repeat transition-all duration-500 ${activeSettings.bgImage ? "opacity-100" : "opacity-0"} ${activeSettings.bgBlur ? "blur-md scale-105" : ""}`}
         style={{
-          backgroundImage: settings.bgImage
-            ? `url('${settings.bgImage}')`
+          backgroundImage: activeSettings.bgImage
+            ? `url('${activeSettings.bgImage}')`
             : "none",
         }}
       ></div>
       <div
-        className={`fixed inset-0 z-[-1] transition-colors duration-500 opacity-100 ${
-          settings.bgImage
-            ? settings.theme === "dark"
-              ? "bg-black/80"
-              : "bg-slate-50/80"
-            : settings.theme === "dark"
-              ? "bg-black"
-              : "bg-slate-50"
-        }`}
+        className={`fixed inset-0 z-[-1] transition-colors duration-500 opacity-100`}
+        style={{
+          backgroundColor: activeSettings.bgImage
+            ? activeSettings.theme === "dark"
+              ? `rgba(0, 0, 0, ${activeSettings.bgOpacity ?? 0.8})`
+              : `rgba(248, 250, 252, ${activeSettings.bgOpacity ?? 0.8})`
+            : activeSettings.theme === "dark"
+              ? "#000000"
+              : "#f8fafc"
+        }}
       ></div>
 
       <Navbar />

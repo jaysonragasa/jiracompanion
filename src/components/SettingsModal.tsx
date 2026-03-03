@@ -12,6 +12,8 @@ import {
   Save,
   Timer,
   ChevronDown,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useAppContext } from "../utils/AppContext";
 
@@ -19,6 +21,7 @@ export default function SettingsModal() {
   const {
     settings,
     setSettings,
+    setPreviewSettings,
     isSettingsOpen,
     setIsSettingsOpen,
     refreshTickets,
@@ -31,15 +34,29 @@ export default function SettingsModal() {
   useEffect(() => {
     if (isSettingsOpen) {
       setLocalSettings(settings);
+    } else {
+      setPreviewSettings(null);
     }
   }, [isSettingsOpen, settings]);
+
+  useEffect(() => {
+    if (isSettingsOpen) {
+      setPreviewSettings(localSettings);
+    }
+  }, [localSettings, isSettingsOpen]);
 
   if (!isSettingsOpen) return null;
 
   const handleSave = () => {
     setSettings(localSettings);
+    setPreviewSettings(null);
     setIsSettingsOpen(false);
     refreshTickets();
+  };
+
+  const handleCancel = () => {
+    setPreviewSettings(null);
+    setIsSettingsOpen(false);
   };
 
   return (
@@ -51,14 +68,14 @@ export default function SettingsModal() {
             Settings
           </h2>
           <button
-            onClick={() => setIsSettingsOpen(false)}
+            onClick={handleCancel}
             className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex flex-col md:flex-row h-[380px]">
+        <div className="flex flex-col md:flex-row h-[420px]">
           <div className="w-full md:w-48 bg-slate-50 dark:bg-zinc-950/50 border-r border-slate-100 dark:border-zinc-800 p-4 space-y-1 flex flex-row md:flex-col overflow-x-auto">
             <button
               onClick={() => setActiveTab("credentials")}
@@ -74,7 +91,7 @@ export default function SettingsModal() {
             </button>
           </div>
 
-          <div className="flex-grow p-6 overflow-y-auto">
+          <div className="flex-grow p-6 overflow-y-auto custom-scrollbar">
             {activeTab === "credentials" && (
               <div className="space-y-5 block">
                 <div className="space-y-1">
@@ -227,6 +244,59 @@ export default function SettingsModal() {
                   </p>
                 </div>
 
+                {localSettings.bgImage && (
+                  <>
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-tight block">
+                          Background Overlay Opacity
+                        </label>
+                        <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                          {Math.round((localSettings.bgOpacity ?? 0.8) * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={localSettings.bgOpacity ?? 0.8}
+                        onChange={(e) =>
+                          setLocalSettings({
+                            ...localSettings,
+                            bgOpacity: parseFloat(e.target.value),
+                          })
+                        }
+                        className="w-full accent-blue-600 cursor-grab active:cursor-grabbing"
+                      />
+                      <div className="flex justify-between text-[8px] text-slate-400 px-1 mt-0.5 font-bold">
+                        <span>Transparent</span>
+                        <span>Dark</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-950/50 border border-slate-200 dark:border-zinc-800 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-lg ${localSettings.bgBlur ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-200 text-slate-500 dark:bg-zinc-800 dark:text-zinc-400'}`}>
+                          {localSettings.bgBlur ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Blur Background</p>
+                          <p className="text-[10px] text-slate-500 dark:text-zinc-400">Apply a frosted glass effect</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setLocalSettings({ ...localSettings, bgBlur: !localSettings.bgBlur })}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 ${localSettings.bgBlur ? 'bg-blue-600' : 'bg-slate-300 dark:bg-zinc-700'}`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${localSettings.bgBlur ? 'translate-x-6' : 'translate-x-1'}`}
+                        />
+                      </button>
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-tight block">
                     Auto Refresh Interval
@@ -258,7 +328,7 @@ export default function SettingsModal() {
 
         <div className="px-6 py-4 border-t border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950/50 flex justify-end gap-3">
           <button
-            onClick={() => setIsSettingsOpen(false)}
+            onClick={handleCancel}
             className="px-4 py-2.5 text-sm font-bold text-slate-500 dark:text-zinc-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
           >
             Cancel
