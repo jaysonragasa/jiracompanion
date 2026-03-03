@@ -65,6 +65,76 @@ async function startServer() {
     }
   });
 
+  app.post("/api/jira/worklog", async (req, res) => {
+    try {
+      console.log("[Backend] Received worklog request");
+      const { domain, email, token, ticketKey, timeSpent, comment } = req.body;
+      
+      if (!domain || !email || !token || !ticketKey || !timeSpent) {
+        console.error("[Backend] Missing required fields in worklog request");
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      console.log(`[Backend] Target Domain: ${domain}, Ticket: ${ticketKey}, Time: ${timeSpent}`);
+
+      const auth = btoa(`${email.trim()}:${token.trim()}`);
+      const jiraApiUrl = `https://${domain}/rest/api/3/issue/${ticketKey}/worklog`;
+
+      const body: any = {
+        timeSpent: timeSpent
+      };
+
+      if (comment) {
+        body.comment = {
+          type: "doc",
+          version: 1,
+          content: [
+            {
+              type: "paragraph",
+              content: [
+                {
+                  type: "text",
+                  text: comment
+                }
+              ]
+            }
+          ]
+        };
+      }
+
+      console.log(`[Backend] Fetching from Jira API: ${jiraApiUrl}`);
+
+      const response = await fetch(jiraApiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'X-Atlassian-Token': 'no-check'
+        },
+        body: JSON.stringify(body)
+      });
+
+      console.log(`[Backend] Jira API Response Status: ${response.status} ${response.statusText}`);
+
+      const responseText = await response.text();
+      
+      if (!response.ok) {
+        console.error(`[Backend] Jira API Error Response:`, responseText.substring(0, 500));
+        return res.status(response.status).json({ 
+          error: `Jira API error: ${response.status}`, 
+          details: responseText 
+        });
+      }
+
+      console.log(`[Backend] Successfully logged work to Jira.`);
+      res.json(JSON.parse(responseText));
+    } catch (error: any) {
+      console.error("[Backend] Internal Server Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

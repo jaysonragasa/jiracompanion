@@ -9,14 +9,14 @@ import {
 import { JiraTicket } from "../types";
 import { useAppContext } from "../utils/AppContext";
 import {
-  extractDescription,
   getStatusStyle,
   getTypeStyle,
 } from "../utils/theme";
+import { extractDescription } from "../utils/jira";
 import * as LucideIcons from "lucide-react";
 
 export default function TicketCards({ tickets }: { tickets: JiraTicket[] }) {
-  const { settings } = useAppContext();
+  const { settings, findMatches, findIndex, findQuery, openWorklogModal } = useAppContext();
   const isDark = settings.theme === "dark";
 
   return (
@@ -32,9 +32,7 @@ export default function TicketCards({ tickets }: { tickets: JiraTicket[] }) {
           isDark,
         );
         const priority = ticket.fields.priority?.name || "Medium";
-        const descriptionSnippet = extractDescription(
-          ticket.fields.description,
-        );
+        const descriptionSnippet = extractDescription(ticket);
 
         const assigneeName =
           ticket.fields.assignee?.displayName || "Unassigned";
@@ -45,10 +43,20 @@ export default function TicketCards({ tickets }: { tickets: JiraTicket[] }) {
         const StatusIcon =
           (LucideIcons as any)[status.icon] || LucideIcons.Circle;
 
+        const isMatch = findMatches.includes(ticket.key);
+        const isFocused = findMatches[findIndex] === ticket.key;
+
         return (
           <div
             key={ticket.key}
-            className="group bg-white dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 hover:shadow-xl hover:shadow-blue-900/5 hover:border-blue-400 dark:hover:border-zinc-600 transition-all duration-300 flex flex-col h-full"
+            data-ticket-key={ticket.key}
+            className={`ticket-element group bg-white dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-2xl p-5 hover:shadow-xl hover:shadow-blue-900/5 hover:border-blue-400 dark:hover:border-zinc-600 transition-all duration-300 flex flex-col h-full relative ${
+              findQuery && !isMatch ? 'opacity-20' : 'opacity-100'
+            } ${
+              isMatch ? 'ring-4 ring-amber-400 dark:ring-amber-500' : ''
+            } ${
+              isFocused ? 'ring-8 ring-blue-500 dark:ring-blue-400' : ''
+            }`}
           >
             <div className="flex items-start justify-between mb-4">
               <span
@@ -154,14 +162,26 @@ export default function TicketCards({ tickets }: { tickets: JiraTicket[] }) {
                   {updated}
                 </span>
               </div>
-              <a
-                href={`https://${settings.domain}/browse/${ticket.key}`}
-                target="_blank"
-                rel="noreferrer"
-                className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white dark:text-slate-400 rounded-xl transition-all shadow-sm"
-              >
-                <ExternalLink className="w-4 h-4" />
-              </a>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openWorklogModal(ticket.key);
+                  }}
+                  className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-emerald-600 hover:text-white text-slate-400 rounded-xl transition-all shadow-sm"
+                  title="Log Work"
+                >
+                  <LucideIcons.Timer className="w-4 h-4" />
+                </button>
+                <a
+                  href={`https://${settings.domain}/browse/${ticket.key}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="p-2 bg-slate-50 dark:bg-zinc-800 hover:bg-blue-600 dark:hover:bg-blue-600 hover:text-white dark:text-slate-400 rounded-xl transition-all shadow-sm"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+              </div>
             </div>
           </div>
         );

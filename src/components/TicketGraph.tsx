@@ -12,15 +12,18 @@ import {
   Palette,
   X,
   Target,
+  Fish,
 } from "lucide-react";
 import TicketSidebar from "./TicketSidebar";
 
 export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
-  const { settings, tickets: allTickets } = useAppContext();
+  const { settings, setSettings, tickets: allTickets, findMatches, findIndex } = useAppContext();
   const isDark = settings.theme === "dark";
 
   const containerRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<Network | null>(null);
+  const fishCanvasRef = useRef<HTMLCanvasElement>(null);
+  const fishAnimationRef = useRef<number | null>(null);
 
   const [isPhysicsEnabled, setIsPhysicsEnabled] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +37,297 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
     nodeId: string;
   } | null>(null);
   const [sidebarNodeId, setSidebarNodeId] = useState<string | null>(null);
+
+  const toggleFishPond = () => {
+    setSettings({ ...settings, fishPondEnabled: !settings.fishPondEnabled });
+  };
+
+  useEffect(() => {
+    if (settings.fishPondEnabled && networkRef.current && fishCanvasRef.current) {
+      startFishSimulation(networkRef.current, fishCanvasRef.current);
+    } else {
+      if (fishAnimationRef.current) {
+        cancelAnimationFrame(fishAnimationRef.current);
+        fishAnimationRef.current = null;
+      }
+      if (fishCanvasRef.current) {
+        const ctx = fishCanvasRef.current.getContext('2d');
+        if (ctx) ctx.clearRect(0, 0, fishCanvasRef.current.width, fishCanvasRef.current.height);
+      }
+    }
+    return () => {
+      if (fishAnimationRef.current) {
+        cancelAnimationFrame(fishAnimationRef.current);
+        fishAnimationRef.current = null;
+      }
+    };
+  }, [settings.fishPondEnabled, tickets]);
+
+  const startFishSimulation = (network: Network, canvas: HTMLCanvasElement) => {
+    const wrapper = document.getElementById('graph-wrapper');
+    if (!canvas || !wrapper) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let width = wrapper.clientWidth;
+    let height = wrapper.clientHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    const resizeObserver = new ResizeObserver(() => {
+        if (document.getElementById('fish-canvas')) {
+            width = wrapper.clientWidth;
+            height = wrapper.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+    });
+    resizeObserver.observe(wrapper);
+
+    const fishes: any[] = [];
+    const numFishes = 20;
+    const colors = ['#00ffff', '#ff00ff', '#ff0055', '#00ffaa', '#ffff00', '#3366ff', '#ff4400'];
+
+    for (let i = 0; i < numFishes; i++) {
+        fishes.push({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 2,
+            vy: (Math.random() - 0.5) * 2,
+            size: 2.5 + Math.random() * 3,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            offset: Math.random() * 1000,
+            targetSpeed: 0.8 + Math.random() * 1.5,
+            heldNodeId: null,
+            holdTimer: 0
+        });
+    }
+
+    const ripples: any[] = [];
+    
+    if (network) {
+        network.on("dragEnd", function (params) {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                const pos = network.getPositions([nodeId])[nodeId];
+                const domPos = network.canvasToDOM(pos);
+                ripples.push({
+                    x: domPos.x,
+                    y: domPos.y,
+                    radius: 15,
+                    life: 1.0
+                });
+            }
+        });
+    }
+
+    function animate() {
+        if (!document.getElementById('fish-canvas')) {
+            resizeObserver.disconnect();
+            return;
+        }
+        
+        ctx!.clearRect(0, 0, width, height);
+        ctx!.globalCompositeOperation = 'lighter';
+
+        let nodePositions: any = {};
+        if (network && (network as any).body && (network as any).body.data.nodes.length > 0) {
+            try {
+                const positions = network.getPositions();
+                for (let id in positions) {
+                    nodePositions[id] = network.canvasToDOM(positions[id]);
+                }
+            } catch(e) {}
+        }
+
+        let currentlyHeldNodes = new Set(fishes.map(f => f.heldNodeId).filter(Boolean));
+
+        for (let i = ripples.length - 1; i >= 0; i--) {
+            let r = ripples[i];
+            r.radius += 6;
+            r.life -= 0.015;
+            
+            if (r.life <= 0) {
+                ripples.splice(i, 1);
+                continue;
+            }
+
+            ctx!.beginPath();
+            ctx!.arc(r.x, r.y, r.radius, 0, Math.PI * 2);
+            ctx!.strokeStyle = `rgba(0, 255, 255, ${r.life * 0.4})`;
+            ctx!.lineWidth = 2;
+            ctx!.stroke();
+            
+            if (r.radius > 40) {
+                ctx!.beginPath();
+                ctx!.arc(r.x, r.y, r.radius - 30, 0, Math.PI * 2);
+                ctx!.strokeStyle = `rgba(0, 255, 255, ${r.life * 0.2})`;
+                ctx!.lineWidth = 1;
+                ctx!.stroke();
+            }
+        }
+
+        fishes.forEach(fish => {
+            const margin = 80;
+            const turnFactor = 0.05;
+            if (fish.x < margin) fish.vx += turnFactor;
+            if (fish.x > width - margin) fish.vx -= turnFactor;
+            if (fish.y < margin) fish.vy += turnFactor;
+            if (fish.y > height - margin) fish.vy -= turnFactor;
+
+            let nodeFear = false;
+
+            ripples.forEach(r => {
+                const dx = fish.x - r.x;
+                const dy = fish.y - r.y;
+                const distSq = dx*dx + dy*dy;
+                const dist = Math.sqrt(distSq);
+                
+                if (Math.abs(dist - r.radius) < 40) {
+                    fish.vx += (dx / dist) * 2.5 * r.life;
+                    fish.vy += (dy / dist) * 2.5 * r.life;
+                    nodeFear = true;
+                }
+            });
+
+            if (nodeFear && fish.heldNodeId) {
+                fish.heldNodeId = null;
+            }
+
+            if (fish.heldNodeId) {
+                fish.holdTimer--;
+                if (fish.holdTimer <= 0) {
+                    fish.heldNodeId = null;
+                } else {
+                    try {
+                        const angle = Math.atan2(fish.vy, fish.vx);
+                        const mouthX = fish.x + Math.cos(angle) * fish.size * 2;
+                        const mouthY = fish.y + Math.sin(angle) * fish.size * 2;
+                        const canvasPos = network.DOMtoCanvas({x: mouthX, y: mouthY});
+                        network.moveNode(fish.heldNodeId, canvasPos.x, canvasPos.y);
+                        
+                        fish.vx *= 0.8;
+                        fish.vy *= 0.8;
+                    } catch(e) {
+                        fish.heldNodeId = null;
+                    }
+                }
+            } else {
+                for (let id in nodePositions) {
+                    const node = nodePositions[id];
+                    if (!node) continue;
+                    const dx = fish.x - node.x;
+                    const dy = fish.y - node.y;
+                    const distSq = dx*dx + dy*dy;
+                    
+                    if (distSq < 15000) {
+                        const dist = Math.sqrt(distSq);
+                        
+                        if (!nodeFear && dist < 40 && !currentlyHeldNodes.has(id) && Math.random() < 0.2) {
+                            fish.heldNodeId = id;
+                            fish.holdTimer = 100 + Math.random() * 200;
+                            currentlyHeldNodes.add(id);
+                        } else if (!fish.heldNodeId) {
+                            fish.vx += (dx / dist) * 0.5;
+                            fish.vy += (dy / dist) * 0.5;
+                            nodeFear = true;
+                        }
+                    }
+                }
+            }
+
+            fishes.forEach(other => {
+                if (fish !== other) {
+                    const dx = fish.x - other.x;
+                    const dy = fish.y - other.y;
+                    const distSq = dx*dx + dy*dy;
+                    if (distSq < 1600) {
+                        const dist = Math.sqrt(distSq);
+                        fish.vx += (dx / dist) * 0.05;
+                        fish.vy += (dy / dist) * 0.05;
+                    }
+                }
+            });
+
+            if (!nodeFear && Math.random() < 0.05) {
+                fish.vx += (Math.random() - 0.5) * 0.5;
+                fish.vy += (Math.random() - 0.5) * 0.5;
+            }
+
+            const speed = Math.sqrt(fish.vx*fish.vx + fish.vy*fish.vy);
+            const maxSpeed = nodeFear ? fish.targetSpeed * 3 : fish.targetSpeed * 1.5; 
+            const minSpeed = fish.heldNodeId ? fish.targetSpeed * 0.2 : fish.targetSpeed * 0.5;
+            
+            if (speed > maxSpeed) {
+                fish.vx = (fish.vx / speed) * maxSpeed;
+                fish.vy = (fish.vy / speed) * maxSpeed;
+            } else if (speed < minSpeed) {
+                fish.vx = (fish.vx / speed) * minSpeed;
+                fish.vy = (fish.vy / speed) * minSpeed;
+            }
+
+            fish.x += fish.vx;
+            fish.y += fish.vy;
+            
+            if (fish.x < -50) fish.x = width + 50;
+            if (fish.x > width + 50) fish.x = -50;
+            if (fish.y < -50) fish.y = height + 50;
+            if (fish.y > height + 50) fish.y = -50;
+
+            const angle = Math.atan2(fish.vy, fish.vx);
+            ctx!.save();
+            ctx!.translate(fish.x, fish.y);
+            ctx!.rotate(angle);
+
+            ctx!.shadowBlur = 12;
+            ctx!.shadowColor = fish.color;
+            ctx!.fillStyle = fish.color;
+            ctx!.strokeStyle = fish.color;
+
+            const time = Date.now() / (250 / Math.max(1, speed)); 
+            const tailAngle = Math.sin(time + fish.offset) * 0.6;
+            const finAngle = Math.sin(time + fish.offset) * 0.4;
+
+            ctx!.beginPath();
+            ctx!.ellipse(0, 0, fish.size * 2, fish.size, 0, 0, Math.PI * 2);
+            ctx!.fill();
+
+            ctx!.beginPath();
+            ctx!.moveTo(-fish.size * 1.5, 0);
+            ctx!.lineTo(-fish.size * 4, -fish.size * Math.sin(tailAngle + 1));
+            ctx!.lineTo(-fish.size * 4, fish.size * Math.sin(tailAngle - 1));
+            ctx!.closePath();
+            ctx!.fill();
+
+            ctx!.lineWidth = fish.size * 0.4;
+            ctx!.lineCap = 'round';
+            
+            ctx!.beginPath();
+            ctx!.moveTo(0, fish.size * 0.8);
+            ctx!.lineTo(-fish.size, fish.size * 2 + finAngle * fish.size);
+            ctx!.stroke();
+
+            ctx!.beginPath();
+            ctx!.moveTo(0, -fish.size * 0.8);
+            ctx!.lineTo(-fish.size, -fish.size * 2 - finAngle * fish.size);
+            ctx!.stroke();
+
+            ctx!.shadowBlur = 0;
+            ctx!.fillStyle = '#000';
+            ctx!.beginPath();
+            ctx!.arc(fish.size, -fish.size * 0.4, fish.size * 0.25, 0, Math.PI * 2);
+            ctx!.arc(fish.size, fish.size * 0.4, fish.size * 0.25, 0, Math.PI * 2);
+            ctx!.fill();
+
+            ctx!.restore();
+        });
+
+        fishAnimationRef.current = requestAnimationFrame(animate);
+    }
+
+    animate();
+  };
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -309,6 +603,12 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
       id="graph-wrapper"
       className="relative w-full h-[600px] bg-white dark:bg-[#050505] border border-slate-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden transition-colors"
     >
+      <canvas
+        id="fish-canvas"
+        ref={fishCanvasRef}
+        className={`absolute inset-0 pointer-events-none z-0 w-full h-full ${settings.fishPondEnabled ? '' : 'hidden'}`}
+      ></canvas>
+
       {isLoading && (
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-white/80 dark:bg-[#050505]/80 backdrop-blur-sm transition-opacity duration-300">
           <div className="flex flex-col items-center gap-4">
@@ -322,7 +622,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
 
       <div
         ref={containerRef}
-        className="w-full h-full vis-network outline-none"
+        className="w-full h-full vis-network outline-none relative z-10"
       ></div>
 
       <div className="absolute top-4 left-4 z-10 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm px-3 py-2 rounded-lg border border-slate-200 dark:border-zinc-800 shadow-sm flex flex-col gap-1 pointer-events-none transition-all">
@@ -338,6 +638,13 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
       </div>
 
       <div className="absolute top-4 right-4 z-10 flex items-center gap-2 transition-all">
+        <button
+          onClick={toggleFishPond}
+          className="p-2 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border border-slate-200 dark:border-zinc-800 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-slate-600 dark:text-slate-300"
+          title="Toggle Fish Pond"
+        >
+          <Fish className={`w-4 h-4 ${settings.fishPondEnabled ? 'text-blue-500 dark:text-blue-400' : ''}`} />
+        </button>
         <button
           onClick={() => setIsPhysicsEnabled(!isPhysicsEnabled)}
           className="p-2 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border border-slate-200 dark:border-zinc-800 rounded-lg shadow-sm hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-slate-600 dark:text-slate-300"

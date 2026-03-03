@@ -1,7 +1,8 @@
-import { ExternalLink, Flag, Link2, Users, X } from "lucide-react";
+import { ExternalLink, Flag, Link2, Users, X, Timer } from "lucide-react";
 import { JiraTicket } from "../types";
 import { useAppContext } from "../utils/AppContext";
 import { getStatusStyle, getTypeStyle } from "../utils/theme";
+import { extractDescription } from "../utils/jira";
 import * as LucideIcons from "lucide-react";
 
 export default function TicketSidebar({
@@ -13,7 +14,7 @@ export default function TicketSidebar({
   onClose: () => void;
   allTickets: JiraTicket[];
 }) {
-  const { settings } = useAppContext();
+  const { settings, openWorklogModal } = useAppContext();
   const isDark = settings.theme === "dark";
 
   if (!nodeId) {
@@ -49,6 +50,7 @@ export default function TicketSidebar({
   );
   const type = ticket.fields.issuetype?.name || "Task";
   const priority = ticket.fields.priority?.name || "Default";
+  const descriptionSnippet = extractDescription(ticket);
 
   const assignee = ticket.fields.assignee?.displayName || "Unassigned";
   const reporter = ticket.fields.reporter?.displayName || "Unknown";
@@ -76,9 +78,27 @@ export default function TicketSidebar({
       </div>
       <div className="flex-grow overflow-y-auto custom-scrollbar px-6 pb-6 pt-2 flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded">
-            {ticket.key}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest bg-slate-100 dark:bg-zinc-800 px-2 py-1 rounded">
+              {ticket.key}
+            </span>
+            <button
+              onClick={() => openWorklogModal(ticket.key)}
+              className="p-1 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+              title="Log Work"
+            >
+              <Timer className="w-4 h-4" />
+            </button>
+            <a
+              href={`https://${settings.domain}/browse/${ticket.key}`}
+              target="_blank"
+              rel="noreferrer"
+              className="p-1 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              title="Open in Jira"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          </div>
           <span
             className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${status.bg} flex items-center gap-1`}
           >
@@ -86,9 +106,13 @@ export default function TicketSidebar({
             {ticket.fields.status?.name || "Unknown"}
           </span>
         </div>
-        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-snug mb-6">
+        <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 leading-snug mb-4">
           {ticket.fields.summary || "External Ticket"}
         </h3>
+
+        <div className="mb-6 text-xs text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap break-words shrink-0">
+          {descriptionSnippet}
+        </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="col-span-1 border border-slate-200 dark:border-zinc-700 p-2 rounded-lg">

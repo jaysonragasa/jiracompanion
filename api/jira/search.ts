@@ -4,29 +4,41 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    const { domain, email, token, jql } = req.body;
-    
-    if (!domain || !email || !token) {
-      return res.status(400).json({ error: "Missing credentials" });
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (e) {
+        console.error("Failed to parse body:", body);
+      }
     }
 
-    const auth = btoa(`${email.trim()}:${token.trim()}`);
+    const { domain, email, token, jql } = body || {};
+    
+    if (!domain || !email || !token) {
+      return res.status(400).json({ 
+        error: "Missing credentials",
+        receivedBody: typeof req.body === 'object' ? Object.keys(req.body) : typeof req.body
+      });
+    }
 
-    const params = new URLSearchParams({
-      jql: jql || '',
-      maxResults: "100",
-      fields: "*all"
-    });
+    const auth = Buffer.from(`${email.trim()}:${token.trim()}`).toString('base64');
 
-    const jiraApiUrl = `https://${domain}/rest/api/3/search/jql?${params.toString()}`;
+    const jiraApiUrl = `https://${domain}/rest/api/3/search`;
 
     const response = await fetch(jiraApiUrl, {
-      method: 'GET',
+      method: 'POST',
       headers: {
         'Authorization': `Basic ${auth}`,
         'Accept': 'application/json',
+        'Content-Type': 'application/json',
         'X-Atlassian-Token': 'no-check'
-      }
+      },
+      body: JSON.stringify({
+        jql: jql || '',
+        maxResults: 100,
+        fields: ["*all"]
+      })
     });
 
     const responseText = await response.text();

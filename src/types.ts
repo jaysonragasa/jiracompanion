@@ -30,4 +30,7 @@ export interface Settings {
   jql: string;
   bgImage: string;
   theme: "light" | "dark";
+  fontSize: number;
+  autoRefresh: number;
+  fishPondEnabled: boolean;
 }

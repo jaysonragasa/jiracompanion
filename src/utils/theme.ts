@@ -178,18 +178,3 @@ export function getStatusStyle(statusName: string) {
     bg: "bg-slate-50 text-slate-600 border-slate-200 dark:bg-zinc-800/50 dark:text-zinc-400 dark:border-zinc-700",
   };
 }
-
-export function extractDescription(desc: any): string {
-  if (!desc) return "No description provided.";
-  if (typeof desc === "string") return desc;
-  if (desc.type === "doc" && desc.content) {
-    let text = "";
-    const processNode = (node: any) => {
-      if (node.type === "text") text += node.text + " ";
-      if (node.content) node.content.forEach(processNode);
-    };
-    desc.content.forEach(processNode);
-    return text.trim() || "No text content available.";
-  }
-  return "Complex description available.";
-}

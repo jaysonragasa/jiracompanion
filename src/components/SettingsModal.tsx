@@ -10,6 +10,8 @@ import {
   Moon,
   Image as ImageIcon,
   Save,
+  Timer,
+  ChevronDown,
 } from "lucide-react";
 import { useAppContext } from "../utils/AppContext";
 
@@ -173,6 +175,35 @@ export default function SettingsModal() {
                 <div className="h-px w-full bg-slate-100 dark:bg-zinc-800"></div>
 
                 <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-tight block">
+                      Font Size
+                    </label>
+                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                      {localSettings.fontSize}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="12"
+                    max="20"
+                    step="1"
+                    value={localSettings.fontSize}
+                    onChange={(e) =>
+                      setLocalSettings({
+                        ...localSettings,
+                        fontSize: parseInt(e.target.value),
+                      })
+                    }
+                    className="w-full accent-blue-600 cursor-grab active:cursor-grabbing"
+                  />
+                  <div className="flex justify-between text-[8px] text-slate-400 px-1 mt-0.5 font-bold">
+                    <span>Small</span>
+                    <span>Large</span>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-tight block">
                     Background Image URL
                   </label>
@@ -194,6 +225,31 @@ export default function SettingsModal() {
                   <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">
                     Leave empty for solid background.
                   </p>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-tight block">
+                    Auto Refresh Interval
+                  </label>
+                  <div className="relative">
+                    <Timer className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-500" />
+                    <select
+                      value={localSettings.autoRefresh}
+                      onChange={(e) =>
+                        setLocalSettings({
+                          ...localSettings,
+                          autoRefresh: parseInt(e.target.value),
+                        })
+                      }
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-black border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-colors appearance-none cursor-pointer"
+                    >
+                      <option value="0">Off (Manual Sync Only)</option>
+                      <option value="30000">Every 30 Seconds</option>
+                      <option value="60000">Every 1 Minute</option>
+                      <option value="300000">Every 5 Minutes</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                  </div>
                 </div>
               </div>
             )}

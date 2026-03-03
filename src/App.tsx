@@ -3,6 +3,8 @@ import Navbar from "./components/Navbar";
 import Filters from "./components/Filters";
 import TicketViews from "./components/TicketViews";
 import SettingsModal from "./components/SettingsModal";
+import WorklogModal from "./components/WorklogModal";
+import QuickFindWidget from "./components/QuickFindWidget";
 import { Lock, Ticket } from "lucide-react";
 
 function Dashboard() {
@@ -77,7 +79,9 @@ function Dashboard() {
         </div>
       </main>
 
+      <QuickFindWidget />
       <SettingsModal />
+      <WorklogModal />
     </div>
   );
 }

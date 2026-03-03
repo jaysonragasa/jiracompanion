@@ -17,7 +17,7 @@ interface AppState {
   debugInfo: string | null;
   viewMode: "cards" | "board" | "list" | "graph";
   setViewMode: (mode: "cards" | "board" | "list" | "graph") => void;
-  refreshTickets: () => void;
+  refreshTickets: (silent?: boolean) => void;
   isSettingsOpen: boolean;
   setIsSettingsOpen: (open: boolean) => void;
 
@@ -36,6 +36,19 @@ interface AppState {
   setSelectedLabels: (labels: string[]) => void;
 
   resetFilters: () => void;
+  // Worklog
+  isWorklogOpen: boolean;
+  worklogTicketKey: string | null;
+  openWorklogModal: (key: string) => void;
+  closeWorklogModal: () => void;
+
+  // Quick Find
+  findQuery: string;
+  setFindQuery: (query: string) => void;
+  findMatches: string[];
+  setFindMatches: (matches: string[]) => void;
+  findIndex: number;
+  setFindIndex: (index: number) => void;
 }
 
 const defaultSettings: Settings = {
@@ -46,6 +59,9 @@ const defaultSettings: Settings = {
   jql: "order by updated DESC",
   bgImage: "",
   theme: "dark",
+  fontSize: 14,
+  autoRefresh: 30000,
+  fishPondEnabled: false,
 };
 
 const AppContext = createContext<AppState | undefined>(undefined);
@@ -80,6 +96,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedPriorities, setSelectedPriorities] = useState<string[]>([]);
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
 
+  // Worklog
+  const [isWorklogOpen, setIsWorklogOpen] = useState(false);
+  const [worklogTicketKey, setWorklogTicketKey] = useState<string | null>(null);
+
+  const openWorklogModal = (key: string) => {
+    setWorklogTicketKey(key);
+    setIsWorklogOpen(true);
+  };
+
+  const closeWorklogModal = () => {
+    setIsWorklogOpen(false);
+    setWorklogTicketKey(null);
+  };
+
+  // Quick Find
+  const [findQuery, setFindQuery] = useState("");
+  const [findMatches, setFindMatches] = useState<string[]>([]);
+  const [findIndex, setFindIndex] = useState(-1);
+
   const setSettings = (newSettings: Settings) => {
     setSettingsState(newSettings);
     localStorage.setItem("jira_settings", JSON.stringify(newSettings));
@@ -92,36 +127,57 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedTypes([]);
     setSelectedPriorities([]);
     setSelectedLabels([]);
+    setFindQuery("");
+    setFindMatches([]);
+    setFindIndex(-1);
   };
 
-  const refreshTickets = async () => {
+  const refreshTickets = async (silent: boolean = false) => {
     if (!settings.domain || !settings.email || !settings.token) {
       setError("Missing Credentials: All fields are required.");
       setIsSettingsOpen(true);
       return;
     }
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
     setDebugInfo(null);
 
     try {
       const data = await fetchJiraTickets(settings);
       setTickets(data);
-      resetFilters();
+      // Don't reset filters on auto-refresh
     } catch (err: any) {
       setError(err.message || "Failed to fetch tickets");
       if (err.message.includes("Jira API error")) {
         setDebugInfo(err.message);
       }
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     refreshTickets();
   }, [settings.domain, settings.email, settings.token]);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    if (settings.autoRefresh > 0 && settings.domain && settings.email && settings.token) {
+      intervalId = setInterval(() => {
+        if (!document.hidden && document.hasFocus()) {
+          refreshTickets(true);
+        }
+      }, settings.autoRefresh);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [settings.autoRefresh, settings.domain, settings.email, settings.token]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -131,6 +187,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       root.classList.remove("dark");
     }
   }, [settings.theme]);
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${settings.fontSize}px`;
+  }, [settings.fontSize]);
 
   return (
     <AppContext.Provider
@@ -159,6 +219,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectedLabels,
         setSelectedLabels,
         resetFilters,
+        isWorklogOpen,
+        worklogTicketKey,
+        openWorklogModal,
+        closeWorklogModal,
+        findQuery,
+        setFindQuery,
+        findMatches,
+        setFindMatches,
+        findIndex,
+        setFindIndex,
       }}
     >
       {children}

@@ -5,12 +5,21 @@ import { getStatusStyle, getTypeStyle } from "../utils/theme";
 import * as LucideIcons from "lucide-react";
 
 export default function TicketBoard({ tickets }: { tickets: JiraTicket[] }) {
-  const { settings } = useAppContext();
+  const { settings, findMatches, findIndex, findQuery, openWorklogModal } = useAppContext();
   const isDark = settings.theme === "dark";
 
+  const preferredOrder = ['open', 'approved', 'development', 'review', 'test', 'closed'];
+  
   const statuses = Array.from(
     new Set(tickets.map((t) => t.fields.status.name)),
-  ).sort();
+  ).sort((a, b) => {
+    let idxA = preferredOrder.findIndex(p => a.toLowerCase().includes(p));
+    let idxB = preferredOrder.findIndex(p => b.toLowerCase().includes(p));
+    if (idxA === -1) idxA = 999;
+    if (idxB === -1) idxB = 999;
+    if (idxA !== idxB) return idxA - idxB;
+    return a.localeCompare(b);
+  });
 
   return (
     <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar items-start">
@@ -56,10 +65,20 @@ export default function TicketBoard({ tickets }: { tickets: JiraTicket[] }) {
                   ticket.fields.assignee?.avatarUrls?.["24x24"] ||
                   ticket.fields.assignee?.avatarUrls?.["32x32"];
 
+                const isMatch = findMatches.includes(ticket.key);
+                const isFocused = findMatches[findIndex] === ticket.key;
+
                 return (
                   <div
                     key={ticket.key}
-                    className="group bg-white dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 hover:border-blue-400 dark:hover:border-zinc-600 transition-all shadow-sm flex flex-col"
+                    data-ticket-key={ticket.key}
+                    className={`ticket-element group bg-white dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800 rounded-xl p-4 hover:border-blue-400 dark:hover:border-zinc-600 transition-all shadow-sm flex flex-col relative ${
+                      findQuery && !isMatch ? 'opacity-20' : 'opacity-100'
+                    } ${
+                      isMatch ? 'ring-4 ring-amber-400 dark:ring-amber-500' : ''
+                    } ${
+                      isFocused ? 'ring-8 ring-blue-500 dark:ring-blue-400' : ''
+                    }`}
                   >
                     <div className="flex items-start justify-between mb-2">
                       <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase">
@@ -100,14 +119,26 @@ export default function TicketBoard({ tickets }: { tickets: JiraTicket[] }) {
                           {updated}
                         </span>
                       </div>
-                      <a
-                        href={`https://${settings.domain}/browse/${ticket.key}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 hover:bg-blue-50 dark:hover:bg-zinc-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openWorklogModal(ticket.key);
+                          }}
+                          className="p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-all"
+                          title="Log Work"
+                        >
+                          <LucideIcons.Timer className="w-3.5 h-3.5" />
+                        </button>
+                        <a
+                          href={`https://${settings.domain}/browse/${ticket.key}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="p-1.5 hover:bg-blue-50 dark:hover:bg-zinc-800 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
                     </div>
                   </div>
                 );
