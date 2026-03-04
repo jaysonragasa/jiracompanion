@@ -39,6 +39,20 @@ export default function Filters() {
   const [assigneesInput, setAssigneesInput] = useState(settings.assignees);
   const [jqlInput, setJqlInput] = useState(settings.jql);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (assigneesInput !== settings.assignees || jqlInput !== settings.jql) {
+        setSettings((prev) => ({
+          ...prev,
+          assignees: assigneesInput,
+          jql: jqlInput,
+        }));
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [assigneesInput, jqlInput, settings.assignees, settings.jql, setSettings]);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,12 +72,10 @@ export default function Filters() {
     setAssigneesInput(val);
     const newJql = generateJqlFromAssignees(val);
     setJqlInput(newJql);
-    setSettings({ ...settings, assignees: val, jql: newJql });
   };
 
   const handleJqlChange = (val: string) => {
     setJqlInput(val);
-    setSettings({ ...settings, jql: val });
   };
 
   const resetToAssignees = () => {
@@ -212,7 +224,7 @@ export default function Filters() {
   };
 
   return (
-    <section className="bg-white/95 dark:bg-zinc-900/80 backdrop-blur-md border border-slate-200 dark:border-zinc-800 rounded-2xl px-6 py-5 mb-8 shadow-sm transition-colors duration-200">
+    <section className="relative z-50 bg-white/95 dark:bg-zinc-900/80 backdrop-blur-md border border-slate-200 dark:border-zinc-800 rounded-2xl px-6 py-5 mb-8 shadow-sm transition-colors duration-200">
       <div
         className="flex items-center justify-between cursor-pointer group"
         onClick={() => setIsExpanded(!isExpanded)}

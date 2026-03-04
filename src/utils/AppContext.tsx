@@ -4,6 +4,7 @@ import {
   useState,
   useEffect,
   ReactNode,
+  useCallback,
 } from "react";
 import { JiraTicket, Settings } from "../types";
 import { fetchJiraTickets, generateJqlFromAssignees } from "./jira";
@@ -138,7 +139,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setFindIndex(-1);
   };
 
-  const refreshTickets = async (silent: boolean = false) => {
+  const refreshTickets = useCallback(async (silent: boolean = false) => {
     if (!settings.domain || !settings.email || !settings.token) {
       setError("Missing Credentials: All fields are required.");
       setIsSettingsOpen(true);
@@ -165,11 +166,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     }
-  };
+  }, [settings.domain, settings.email, settings.token, settings.jql]);
 
   useEffect(() => {
     refreshTickets();
-  }, [settings.domain, settings.email, settings.token]);
+  }, [refreshTickets]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
@@ -183,7 +184,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [settings.autoRefresh, settings.domain, settings.email, settings.token]);
+  }, [settings.autoRefresh, settings.domain, settings.email, settings.token, refreshTickets]);
 
   useEffect(() => {
     const activeSettings = previewSettings || settings;
