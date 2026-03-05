@@ -46,7 +46,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
   };
 
   useEffect(() => {
-    if (settings.fishPondEnabled && networkRef.current && fishCanvasRef.current) {
+    if (settings.fishPondEnabled && !isLoading && networkRef.current && fishCanvasRef.current) {
       startFishSimulation(networkRef.current, fishCanvasRef.current);
     } else {
       if (fishAnimationRef.current) {
@@ -64,7 +64,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
         fishAnimationRef.current = null;
       }
     };
-  }, [settings.fishPondEnabled, tickets]);
+  }, [settings.fishPondEnabled, isLoading]);
 
   const startFishSimulation = (network: Network, canvas: HTMLCanvasElement) => {
     const wrapper = document.getElementById('graph-wrapper');
