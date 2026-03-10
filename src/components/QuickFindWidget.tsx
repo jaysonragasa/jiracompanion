@@ -59,7 +59,7 @@ export default function QuickFindWidget() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md pl-4 pr-2 py-2 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] flex items-center gap-3 transition-transform duration-300">
+    <div className="fixed bottom-6 right-24 z-50 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md pl-4 pr-2 py-2 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] flex items-center gap-3 transition-transform duration-300">
       <TextSearch className="w-4 h-4 text-blue-500 shrink-0" />
       <input
         type="text"

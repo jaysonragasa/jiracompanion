@@ -35,4 +35,5 @@ export interface Settings {
   fontSize: number;
   autoRefresh: number;
   fishPondEnabled: boolean;
+  geminiApiKey?: string;
 }

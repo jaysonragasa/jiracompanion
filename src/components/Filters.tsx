@@ -53,6 +53,16 @@ export default function Filters() {
     return () => clearTimeout(timer);
   }, [assigneesInput, jqlInput, settings.assignees, settings.jql, setSettings]);
 
+  // Sync local state when settings change externally (e.g. via JayQ)
+  useEffect(() => {
+    if (settings.jql !== jqlInput) {
+      setJqlInput(settings.jql);
+    }
+    if (settings.assignees !== assigneesInput) {
+      setAssigneesInput(settings.assignees);
+    }
+  }, [settings.jql, settings.assignees]);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import TicketViews from "./components/TicketViews";
 import SettingsModal from "./components/SettingsModal";
 import WorklogModal from "./components/WorklogModal";
 import QuickFindWidget from "./components/QuickFindWidget";
+import JayQAssistant from "./components/JayQAssistant";
 import { Lock, Ticket } from "lucide-react";
 
 function Dashboard() {
@@ -84,6 +85,7 @@ function Dashboard() {
       <QuickFindWidget />
       <SettingsModal />
       <WorklogModal />
+      <JayQAssistant />
     </div>
   );
 }

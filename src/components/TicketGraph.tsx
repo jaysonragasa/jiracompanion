@@ -378,7 +378,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
       if (!allNodesMap.has(ticket.key)) {
         allNodesMap.set(ticket.key, {
           id: ticket.key,
-          label: ticket.key,
+          label: `${ticket.key}\n${ticket.fields.status?.name || ""}`,
           title: `${ticket.fields.summary}\nType: ${typeName}\nAssignee: ${assignee ? assignee.displayName : "Unassigned"}`,
           shape: avatarUrl ? "circularImage" : "dot",
           image: avatarUrl || undefined,
@@ -394,7 +394,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
           },
           font: {
             color: isDark ? "#e2e8f0" : "#475569",
-            face: "Inter",
+            face: "Inter, system-ui, sans-serif",
             size: 12,
             bold: true,
           },
@@ -423,7 +423,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
 
           allNodesMap.set(linkedTicket.key, {
             id: linkedTicket.key,
-            label: linkedTicket.key,
+            label: `${linkedTicket.key}\n${linkedTicket.fields?.status?.name || "?"}`,
             title: `${linkedTicket.fields?.summary || "External Ticket"}\nType: ${lTypeName}\nAssignee: ${lAssignee ? lAssignee.displayName : "Unassigned"}`,
             shape: lAvatarUrl ? "circularImage" : "dot",
             image: lAvatarUrl || undefined,
@@ -439,7 +439,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
             },
             font: {
               color: isDark ? "#71717a" : "#94a3b8",
-              face: "Inter",
+              face: "Inter, system-ui, sans-serif",
               size: 10,
             },
             borderWidth: 2,
@@ -456,7 +456,7 @@ export default function TicketGraph({ tickets }: { tickets: JiraTicket[] }) {
             align: "middle",
             size: 10,
             color: isDark ? "#a1a1aa" : "#64748b",
-            face: "Inter",
+            face: "Inter, system-ui, sans-serif",
             strokeWidth: 2,
             strokeColor: isDark ? "#050505" : "#ffffff",
           },

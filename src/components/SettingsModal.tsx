@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Eye,
   EyeOff,
+  Sparkles,
 } from "lucide-react";
 import { useAppContext } from "../utils/AppContext";
 
@@ -156,6 +157,29 @@ export default function SettingsModal() {
                   <p className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
                     Generating a new token? Go to your Atlassian Account
                     Settings &gt; Security &gt; Create and manage API tokens.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-tight">
+                    Gemini API Key (Optional)
+                  </label>
+                  <div className="relative">
+                    <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 dark:text-zinc-500" />
+                    <input
+                      type="password"
+                      value={localSettings.geminiApiKey || ""}
+                      onChange={(e) =>
+                        setLocalSettings({
+                          ...localSettings,
+                          geminiApiKey: e.target.value,
+                        })
+                      }
+                      placeholder="Use custom key for JayQ..."
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-black border border-slate-200 dark:border-zinc-800 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium transition-colors"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 dark:text-zinc-500 mt-1">
+                    Leave empty to use the default system key.
                   </p>
                 </div>
               </div>

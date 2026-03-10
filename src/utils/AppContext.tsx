@@ -59,7 +59,7 @@ const defaultSettings: Settings = {
   email: "",
   token: "",
   assignees: "",
-  jql: "order by updated DESC",
+  jql: "created >= -30d ORDER BY updated DESC",
   bgImage: "",
   bgOpacity: 0.8,
   bgBlur: false,
@@ -67,6 +67,7 @@ const defaultSettings: Settings = {
   fontSize: 14,
   autoRefresh: 30000,
   fishPondEnabled: false,
+  geminiApiKey: "",
 };
 
 const AppContext = createContext<AppState | undefined>(undefined);
